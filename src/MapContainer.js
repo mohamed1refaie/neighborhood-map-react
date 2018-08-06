@@ -52,10 +52,6 @@ class MapContainer extends Component {
     this.loadMap();
   }
 
-  componentWillReceiveProps(nextProps) {
-    console.log("jo");
-  }
-
   loadMap() {
     if (this.props && this.props.google) {
       const { google } = this.props;

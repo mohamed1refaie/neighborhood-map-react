@@ -1,4 +1,5 @@
 import React from "react";
+import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
 import classNames from "classnames";
 import { withStyles } from "@material-ui/core/styles";
@@ -12,8 +13,8 @@ import IconButton from "@material-ui/core/IconButton";
 import MenuIcon from "@material-ui/icons/Menu";
 import ChevronLeftIcon from "@material-ui/icons/ChevronLeft";
 import ChevronRightIcon from "@material-ui/icons/ChevronRight";
-import MapContainer from "./MapContainer";
-//import { mailFolderListItems, otherMailFolderListItems } from "./tileData";
+import ListItem from "@material-ui/core/ListItem";
+import ListItemText from "@material-ui/core/ListItemText";
 
 const drawerWidth = 240;
 
@@ -92,6 +93,11 @@ const styles = theme => ({
   },
   "contentShift-right": {
     marginRight: 0
+  },
+  root2: {
+    width: "100%",
+    maxWidth: "360px",
+    backgroundColor: theme.palette.background.paper
   }
 });
 
@@ -138,7 +144,10 @@ class PersistentDrawer extends React.Component {
           "The <b>Museum of Egyptian Antiquities</b>, known commonly as the <b>Egyptian Museum</b> or <b>Museum of Cairo</b>, in Cairo, Egypt, is home to an extensive collection of ancient Egyptian antiquities. It has 120,000 items, with a representative amount on display, the remainder in storerooms. The edifice is one of the largest museums in the region. As of July 2017, the museum is open to the public.",
         link: "https://en.wikipedia.org/wiki/Egyptian_Museum"
       }
-    ]
+    ],
+    query: "",
+    markers: [],
+    infowindow: new this.props.google.maps.InfoWindow()
   };
 
   handleDrawerOpen = () => {
@@ -153,6 +162,76 @@ class PersistentDrawer extends React.Component {
     this.setState({
       anchor: event.target.value
     });
+  };
+
+  componentDidMount() {
+    this.loadMap();
+  }
+
+  loadMap() {
+    if (this.props && this.props.google) {
+      const { google } = this.props;
+      const maps = google.maps;
+      const mapRef = this.refs.map;
+      const node = ReactDOM.findDOMNode(mapRef);
+      const mapConfig = Object.assign(
+        {},
+        {
+          center: { lat: 29.9976196, lng: 31.1660679 },
+          zoom: 13,
+          mapTypeId: "roadmap"
+        }
+      );
+      this.map = new maps.Map(node, mapConfig);
+      this.addMarkers();
+    }
+  }
+  addMarkers = () => {
+    const { google } = this.props;
+    let { infowindow } = this.state;
+    const bounds = new google.maps.LatLngBounds();
+    this.state.locations.forEach((location, ind) => {
+      const marker = new google.maps.Marker({
+        position: { lat: location.location.lat, lng: location.location.lng },
+        map: this.map,
+        title: location.name
+      });
+      marker.addListener("click", () => {
+        this.populateInfoWindow(
+          marker,
+          infowindow,
+          location.name,
+          location.reading,
+          location.link
+        );
+      });
+      this.setState(state => ({
+        markers: [...state.markers, marker]
+      }));
+      bounds.extend(marker.position);
+    });
+    this.map.fitBounds(bounds);
+  };
+  populateInfoWindow = (marker, infowindow, title, reading, link) => {
+    // Check to make sure the infowindow is not already opened on this marker.
+    if (infowindow.marker !== marker) {
+      infowindow.marker = marker;
+      infowindow.setContent(`<div id="content">
+      <div id="siteNotice">
+      </div>
+      <h2 id="firstHeading" class="firstHeading">${title}</h2>
+      <div id="bodyContent">
+      <p>${reading}</p>
+      <p>Links: ${title}, <a href="${link}">
+      Read more..</a></p>
+      </div>
+      </div>`);
+      infowindow.open(this.map, marker);
+      // Make sure the marker property is cleared if the infowindow is closed.
+      infowindow.addListener("closeclick", function() {
+        infowindow.marker = null;
+      });
+    }
   };
 
   render() {
@@ -177,10 +256,20 @@ class PersistentDrawer extends React.Component {
             )}
           </IconButton>
         </div>
-        <Divider />
-        <List>{}</List>
-        <Divider />
-        <List>{}</List>
+        <div className={classes.root2}>
+          <List component="nav">
+            {this.state.locations.map(location => {
+              return (
+                <div>
+                  <ListItem button>
+                    <ListItemText primary={location.name} />
+                  </ListItem>
+                  <Divider light />
+                </div>
+              );
+            })}
+          </List>
+        </div>
       </Drawer>
     );
 
@@ -228,10 +317,14 @@ class PersistentDrawer extends React.Component {
             )}
           >
             <div className={classes.drawerHeader} />
-            <MapContainer
-              google={this.props.google}
-              locations={this.state.locations}
-            />
+            <div>
+              <div className="container">
+                <div className="sidebar text-input text-input-hidden" />
+                <div role="application" className="map" ref="map">
+                  loading map...
+                </div>
+              </div>
+            </div>
           </main>
           {after}
         </div>
