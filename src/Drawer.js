@@ -212,6 +212,22 @@ class PersistentDrawer extends React.Component {
     });
     this.map.fitBounds(bounds);
   };
+  handleMarkerInfoWindow = location => {
+    let marker;
+    for (let i = 0; i < this.state.markers.length; i++) {
+      if (this.state.markers[i].title === location.name) {
+        marker = this.state.markers[i];
+        break;
+      }
+    }
+    this.populateInfoWindow(
+      marker,
+      this.state.infowindow,
+      location.name,
+      location.reading,
+      location.link
+    );
+  };
   populateInfoWindow = (marker, infowindow, title, reading, link) => {
     // Check to make sure the infowindow is not already opened on this marker.
     if (infowindow.marker !== marker) {
@@ -258,10 +274,15 @@ class PersistentDrawer extends React.Component {
         </div>
         <div className={classes.root2}>
           <List component="nav">
-            {this.state.locations.map(location => {
+            {this.state.locations.map((location, i) => {
               return (
-                <div>
-                  <ListItem button>
+                <div key={i}>
+                  <ListItem
+                    button
+                    onClick={() => {
+                      this.handleMarkerInfoWindow(location);
+                    }}
+                  >
                     <ListItemText primary={location.name} />
                   </ListItem>
                   <Divider light />
