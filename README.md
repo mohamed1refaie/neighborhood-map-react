@@ -10,6 +10,13 @@ To Run the Project:
 * install all project dependencies with `npm install`
 * start the development server with `npm start`
 
+***NOTE:*** *The service workers for this app will only cache the site when it is in production mode.*
+
+## Running the project in Production Mode
+
+1. First build the production ready optimized code. `npm run build`
+2. Then `npm run deploy` to deploy to the specified address
+
 ## Dependencies
 * [google-maps-react](https://github.com/fullstackreact/google-maps-react) for Google Maps API
 * [Material-UI](https://github.com/mui-org/material-ui) for React components that implement Google's Material Design.
