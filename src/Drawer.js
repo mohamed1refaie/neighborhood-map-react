@@ -18,7 +18,6 @@ import ListItemText from "@material-ui/core/ListItemText";
 import TextField from "@material-ui/core/TextField";
 
 const drawerWidth = 240;
-
 const styles = theme => ({
   root: {
     flexGrow: 1
@@ -160,7 +159,8 @@ class PersistentDrawer extends React.Component {
     ],
     query: "",
     markers: [],
-    infowindow: new this.props.google.maps.InfoWindow()
+    images: [],
+    infowindow: new this.props.google.maps.InfoWindow({ maxWidth: 240 })
   };
 
   handleDrawerOpen = () => {
@@ -181,6 +181,7 @@ class PersistentDrawer extends React.Component {
     this.loadMap();
   }
 
+  // loading the map and putting it in the dom
   loadMap() {
     if (this.props && this.props.google) {
       const { google } = this.props;
@@ -199,6 +200,12 @@ class PersistentDrawer extends React.Component {
       this.addMarkers();
     }
   }
+  /* 
+    Looping over the locations and adding a marker for each one,
+    also calling addImage for each location,
+    setting a listener if the marker clicked,
+    finally adding the marker to the state.markers
+  */
   addMarkers = () => {
     const { google } = this.props;
     let { infowindow } = this.state;
@@ -210,6 +217,9 @@ class PersistentDrawer extends React.Component {
         title: location.name,
         animation: 2
       });
+
+      this.addImage(location.name);
+
       marker.addListener("click", () => {
         this.populateInfoWindow(
           marker,
@@ -219,6 +229,7 @@ class PersistentDrawer extends React.Component {
           location.link
         );
       });
+
       this.setState(state => ({
         markers: [...state.markers, marker]
       }));
@@ -226,6 +237,56 @@ class PersistentDrawer extends React.Component {
     });
     this.map.fitBounds(bounds);
   };
+
+  /*
+    function that fetch images from unsplash api then parsing the response then 
+    calling parseImage function to get just one image,
+    and finally setting the state of images with the image and name
+  */
+  addImage = searchText => {
+    let img;
+    fetch(`https://api.unsplash.com/search/photos?page=1&query=${searchText}`, {
+      headers: {
+        Authorization:
+          "Client-ID 7852fbc515cf58d79bc4da34e2d531fb05eb21048592b0131427bcbc042ae65c"
+      }
+    })
+      .then(response => response.json())
+      .then(response => {
+        img = this.parseImage(response);
+        if (img[1] === "i") {
+          img += `alt="${searchText}" width=240 height=200>`;
+        }
+        let obj = { name: searchText, content: img };
+
+        this.setState(
+          state => ({ images: [...state.images, obj] }),
+          () => {
+            //console.log(this.state.images);
+          }
+        );
+      });
+  };
+
+  /*
+    taking all the images as a parameter and getting only one image and putting it between img tag
+    if the images is null returning and error msg 
+  */
+  parseImage = images => {
+    let htmlContent = "";
+    if (images && images.results && images.results[2]) {
+      const firstImage = images.results[2];
+      htmlContent = `<img role="img" src="${firstImage.urls.regular}"`;
+    } else {
+      htmlContent = '<div class="error-no-image">No images available</div>';
+    }
+
+    return htmlContent;
+  };
+
+  /*
+    function that taking the location as a parameter and calling populateInfoWindow with the proper parameters
+  */
   handleMarkerInfoWindow = location => {
     let marker;
     for (let i = 0; i < this.state.markers.length; i++) {
@@ -233,7 +294,6 @@ class PersistentDrawer extends React.Component {
         marker = this.state.markers[i];
       }
     }
-
     this.populateInfoWindow(
       marker,
       this.state.infowindow,
@@ -242,15 +302,31 @@ class PersistentDrawer extends React.Component {
       location.link
     );
   };
+
+  /*
+    looping over the images in the state to the get the proper image that matches the name of the location,
+    checking if the marker of the infoWindow is not null and bouncing so setting the animation to null,
+    then setting the animation of the new marker to bounce,
+    setting the content of the infoWindow,
+    adding a listner to closeclick of the infowindow to set the animation of the marker to null and the then setting the marker itself to null
+  */
   populateInfoWindow = (marker, infowindow, title, reading, link) => {
     // Check to make sure the infowindow is not already opened on this marker.
     if (infowindow.marker !== marker) {
-      if (infowindow.marker) {
+      let img;
+      for (let i = 0; i < this.state.images.length; i++) {
+        if (this.state.images[i].name === title) {
+          img = this.state.images[i].content;
+        }
+      }
+      if (infowindow.marker != null) {
         infowindow.marker.setAnimation(null);
       }
       marker.setAnimation(1);
       infowindow.marker = marker;
-      infowindow.setContent(`<div id="content">
+      if (img == null) img = "<p>Loading Photo..</p>";
+      infowindow.setContent(
+        `${img}<div id="content">
       <div id="siteNotice">
       </div>
       <h2 id="firstHeading" class="firstHeading">${title}</h2>
@@ -259,17 +335,24 @@ class PersistentDrawer extends React.Component {
       <p>Links: ${title}, <a href="${link}">
       Read more..</a></p>
       </div>
-      </div>`);
+      <h5><i>unsplash data used</i></h5>
+      </div>`
+      );
       infowindow.open(this.map, marker);
       // Make sure the marker property is cleared if the infowindow is closed.
       infowindow.addListener("closeclick", function() {
+        if (infowindow.marker) infowindow.marker.setAnimation(null);
         infowindow.marker = null;
       });
     }
   };
+
+  // changing the query state when the search is changed
   handleChange = event => {
     this.setState({ query: event.target.value });
   };
+
+  //function the checking if the current location's marker is currently visible
   isValid = location => {
     for (let i = 0; i < this.state.markers.length; i++) {
       if (this.state.markers[i].title === location.name) {
@@ -277,9 +360,19 @@ class PersistentDrawer extends React.Component {
       }
     }
   };
+
+  //render function
   render() {
     const { classes, theme } = this.props;
     const { locations, query, markers, infowindow, anchor, open } = this.state;
+
+    /*
+      if the query is not null, looping over the locations and checking if the location's name matching the query,
+      if so set the visiblity of the marker that match the location to true
+      else if there's an infowindow opened setting it's marker to null the close it
+
+      else if there's no query set visiblity of all markers to true
+    */
     if (query) {
       locations.forEach((l, i) => {
         if (l.name.toLowerCase().includes(query.toLowerCase())) {
@@ -287,6 +380,7 @@ class PersistentDrawer extends React.Component {
         } else {
           if (infowindow.marker === markers[i]) {
             // close the info window if marker removed
+            infowindow.marker = null;
             infowindow.close();
           }
           markers[i].setVisible(false);
@@ -299,6 +393,7 @@ class PersistentDrawer extends React.Component {
         }
       });
     }
+
     const drawer = (
       <Drawer
         variant="persistent"
