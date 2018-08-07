@@ -207,7 +207,8 @@ class PersistentDrawer extends React.Component {
       const marker = new google.maps.Marker({
         position: { lat: location.location.lat, lng: location.location.lng },
         map: this.map,
-        title: location.name
+        title: location.name,
+        animation: 2
       });
       marker.addListener("click", () => {
         this.populateInfoWindow(
@@ -230,9 +231,9 @@ class PersistentDrawer extends React.Component {
     for (let i = 0; i < this.state.markers.length; i++) {
       if (this.state.markers[i].title === location.name) {
         marker = this.state.markers[i];
-        break;
       }
     }
+
     this.populateInfoWindow(
       marker,
       this.state.infowindow,
@@ -244,6 +245,10 @@ class PersistentDrawer extends React.Component {
   populateInfoWindow = (marker, infowindow, title, reading, link) => {
     // Check to make sure the infowindow is not already opened on this marker.
     if (infowindow.marker !== marker) {
+      if (infowindow.marker) {
+        infowindow.marker.setAnimation(null);
+      }
+      marker.setAnimation(1);
       infowindow.marker = marker;
       infowindow.setContent(`<div id="content">
       <div id="siteNotice">
@@ -324,7 +329,7 @@ class PersistentDrawer extends React.Component {
           />
         </form>
         <div className={classes.root2}>
-          <List component="nav">
+          <List component="nav" role="list">
             {this.state.locations
               .filter(location => this.isValid(location))
               .map((location, i) => {
@@ -332,6 +337,7 @@ class PersistentDrawer extends React.Component {
                   <div key={i}>
                     <ListItem
                       button
+                      role="Listitem"
                       onClick={() => {
                         this.handleMarkerInfoWindow(location);
                       }}
