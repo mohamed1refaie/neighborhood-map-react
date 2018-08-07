@@ -15,6 +15,7 @@ import ChevronLeftIcon from "@material-ui/icons/ChevronLeft";
 import ChevronRightIcon from "@material-ui/icons/ChevronRight";
 import ListItem from "@material-ui/core/ListItem";
 import ListItemText from "@material-ui/core/ListItemText";
+import TextField from "@material-ui/core/TextField";
 
 const drawerWidth = 240;
 
@@ -98,6 +99,18 @@ const styles = theme => ({
     width: "100%",
     maxWidth: "360px",
     backgroundColor: theme.palette.background.paper
+  },
+  container: {
+    display: "flex",
+    flexWrap: "wrap"
+  },
+  textField: {
+    marginLeft: theme.spacing.unit,
+    marginRight: theme.spacing.unit,
+    width: 200
+  },
+  menu: {
+    width: 200
   }
 });
 
@@ -249,11 +262,38 @@ class PersistentDrawer extends React.Component {
       });
     }
   };
-
+  handleChange = event => {
+    this.setState({ query: event.target.value });
+  };
+  isValid = location => {
+    for (let i = 0; i < this.state.markers.length; i++) {
+      if (this.state.markers[i].title === location.name) {
+        return this.state.markers[i].getVisible();
+      }
+    }
+  };
   render() {
     const { classes, theme } = this.props;
-    const { anchor, open } = this.state;
-
+    const { locations, query, markers, infowindow, anchor, open } = this.state;
+    if (query) {
+      locations.forEach((l, i) => {
+        if (l.name.toLowerCase().includes(query.toLowerCase())) {
+          markers[i].setVisible(true);
+        } else {
+          if (infowindow.marker === markers[i]) {
+            // close the info window if marker removed
+            infowindow.close();
+          }
+          markers[i].setVisible(false);
+        }
+      });
+    } else {
+      locations.forEach((l, i) => {
+        if (markers.length && markers[i]) {
+          markers[i].setVisible(true);
+        }
+      });
+    }
     const drawer = (
       <Drawer
         variant="persistent"
@@ -272,23 +312,36 @@ class PersistentDrawer extends React.Component {
             )}
           </IconButton>
         </div>
+        <form className={classes.container} noValidate autoComplete="off">
+          <TextField
+            id="search"
+            label="Search"
+            role="search"
+            placeholder="Eg: Cairo"
+            className={classes.textField}
+            onChange={event => this.handleChange(event)}
+            margin="normal"
+          />
+        </form>
         <div className={classes.root2}>
           <List component="nav">
-            {this.state.locations.map((location, i) => {
-              return (
-                <div key={i}>
-                  <ListItem
-                    button
-                    onClick={() => {
-                      this.handleMarkerInfoWindow(location);
-                    }}
-                  >
-                    <ListItemText primary={location.name} />
-                  </ListItem>
-                  <Divider light />
-                </div>
-              );
-            })}
+            {this.state.locations
+              .filter(location => this.isValid(location))
+              .map((location, i) => {
+                return (
+                  <div key={i}>
+                    <ListItem
+                      button
+                      onClick={() => {
+                        this.handleMarkerInfoWindow(location);
+                      }}
+                    >
+                      <ListItemText primary={location.name} />
+                    </ListItem>
+                    <Divider light />
+                  </div>
+                );
+              })}
           </List>
         </div>
       </Drawer>
